@@ -1,8 +1,9 @@
 using MonteCarloMeasurements
-using LsqFit
-using FFTW
+#using LsqFit
+#using FFTW
 using Plots
-using Base.Threads
+#using Base.Threads
+using Folds
 
 # NOTE: move spectra data to a class?
 
@@ -99,17 +100,13 @@ function match_ew_against_grid(ew_list_obs, Texc, R, vsini, grid_cache)#, ew_cac
         read_spectrum_ambre_grid(GRID_SPECTRA_WAVE_PATH)
     end
 
-    matches = ThreadSafeDict{Tuple{Int64, Float64, Float64, Float64}, Particles{Float64, MONTE_CARLO_NUM_SAMPLES}}()
-
-    spectra_filenames = filter(filename -> begin
+    spectra = Dict{Tuple{Int64, Float64, Float64, Float64}, Array{Float64, 1}}()
+    
+    for filename in readdir(GRID_SPECTRA_FLUX_PATH)
         Teff = parse(Int64, filename[2:5])
-        return mean(Texc) - std(Texc) <= Teff <= mean(Texc) + std(Texc)
-    end, readdir(GRID_SPECTRA_FLUX_PATH))
-
-    for filename in spectra_filenames
-        #println("\t Matching against: $filename")
-
-        Teff = parse(Int64, filename[2:5])
+        
+        !(mean(Texc) - std(Texc) <= Teff <= mean(Texc) + std(Texc)) && continue
+        
         logg = parse(Float64, filename[8:11])
         FeH = parse(Float64, filename[23:27])
         α_Fe = parse(Float64, filename[30:34])
@@ -120,6 +117,14 @@ function match_ew_against_grid(ew_list_obs, Texc, R, vsini, grid_cache)#, ew_cac
         flux_grid = get!(grid_cache, filepath) do
             read_spectrum_ambre_grid(filepath)
         end
+        
+        push!(spectra, (Teff, logg, FeH, α_Fe) => flux_grid)
+    end
+    
+    # matches = ThreadSafeDict{Tuple{Int64, Float64, Float64, Float64}, Particles{Float64, MONTE_CARLO_NUM_SAMPLES}}()
+    
+    matches = Folds.mapreduce(merge, spectra; init=Dict()) do (parameters_grid, flux_grid)
+        #println("\t Matching against: $filename")
 
         #ew_list_grid = get!(ew_cache, (filename, R, !ismissing(vsini) ? mean(vsini) : 0.0)) do
             # println("isolate_all_lines_found_in_spectrum")
@@ -135,7 +140,8 @@ function match_ew_against_grid(ew_list_obs, Texc, R, vsini, grid_cache)#, ew_cac
         #println("calculate_min_squared_error_ew")
         χ² = calculate_min_squared_error_ew(ew_list_obs, ew_list_grid)
 
-        push!(matches, (Teff, logg, FeH, α_Fe) => χ²)
+        Dict(parameters_grid => χ²)
+        # push!(matches, parameters_grid => χ²)
     end
 
     χ²_final, (Teff_final, logg_final, FeH_final, α_Fe_final) = @unsafe findmin(matches)

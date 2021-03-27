@@ -19,9 +19,12 @@ include("profiles.jl")
 include("grid_compare.jl")
 
 # use @avx everywhere (LoopVectorization)
-# parallelize
+# parallelize (no methods tried worked well; multithreaded always turns out to be
+# slower - isolate_all_lines_found_in_spectrum is slow af)
 # optimize memory usage
 # optimize monte carlo measurements (see performance tips)
+
+# document code
 
 # 1. config should be overrideable
 # 2. all the filter()ing in excitation temp still makes me a bit crazy
