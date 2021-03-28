@@ -1,6 +1,6 @@
 using DelimitedFiles
 
-struct TsantakiLine
+struct AtomicParameters
     χ::Float64
     loggf::Float64
 end
@@ -11,7 +11,7 @@ function read_line_list()
 
     data = data[data[:,4] .!= "FeII",:]
 
-    line_list = Dict{Float64, TsantakiLine}()
+    line_list = Dict{Float64, AtomicParameters}()
     ew_list = Dict{Float64, Float64}()
 
     for row in eachrow(data[data[:,4] .!= "FeII",:])
@@ -19,7 +19,7 @@ function read_line_list()
         χ = row[2]
         loggf = row[3]
         W_λ_Sun = row[5]*10^(-3) # Å
-        push!(line_list, λ_c_approx => TsantakiLine(χ, loggf))
+        push!(line_list, λ_c_approx => AtomicParameters(χ, loggf))
         push!(ew_list, λ_c_approx => W_λ_Sun)
     end
 

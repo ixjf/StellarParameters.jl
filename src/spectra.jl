@@ -1,5 +1,5 @@
 using FITSIO
-using MonteCarloMeasurements
+using Measurements: ±
 
 """
     read_spectrum_unknown_source_prof(filepath)

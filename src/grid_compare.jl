@@ -1,7 +1,8 @@
-using MonteCarloMeasurements
+#using MonteCarloMeasurements: mean, std, @unsafe
+using Measurements: Measurement, value, uncertainty, ±
 #using LsqFit
 #using FFTW
-using Plots
+#using Plots
 #using Base.Threads
 using Folds
 
@@ -11,31 +12,32 @@ GridCache = ThreadSafeDict{String, Array{Float64, 1}}
 
 function convolve_simulated_profile(R, vsini, λ_c, continuum_flux, λ, flux)
     flux = flux[:] # copy, don't want to alter `flux`
-    flux .-= mean(continuum_flux) # remove constant factor before convolution
+    flux .-= value(continuum_flux) # remove constant factor before convolution
 
     if !ismissing(vsini)
         Δλ = λ[2] - λ[1]
-        rp_kernel = rotational_profile(Δλ, EPSILON, mean(λ_c), mean(vsini))
+        rp_kernel = rotational_profile(Δλ, EPSILON, value(λ_c), value(vsini))
         flux = convolve1d(flux, rp_kernel)
     end
 
     ip_kernel = instrumental_profile((λ, flux), R)
     flux = convolve1d(flux, ip_kernel)
 
-    flux .+= mean(continuum_flux)
+    flux .+= value(continuum_flux)
 
     (λ, flux)
 end
 
 function isolate_all_lines_found_in_spectrum(vrad, profile_fn, line_list, (λ, flux)) # line_list = tsantaki's
-    lines = Dict{Float64, Tuple{Particles, Array{Float64}, Array{Float64}}}()
-    ew_list = Dict{Float64, Particles}()
+    lines = Dict{Float64, Tuple{Measurement{Float64}, Array{Float64}, Array{Float64}}}()
+    #ew_list = Dict{Float64, Particles}()
+    ew_list = Dict{Float64, Measurement{Float64}}()
     # TODO: make previous types type-safe
 
     for λ_c_approx in line_list
         !(λ[begin] <= λ_c_approx <= λ[end]) && continue
 
-        λ_c_corrected = !ismissing(vrad) ? correct_λ_for_vrad(λ_c_approx, mean(vrad)) : λ_c_approx
+        λ_c_corrected = !ismissing(vrad) ? correct_λ_for_vrad(λ_c_approx, value(vrad)) : λ_c_approx
 
         λ_line, flux_line = isolate_line((λ, flux), λ_c_corrected)
 
@@ -54,7 +56,7 @@ function isolate_all_lines_found_in_spectrum(vrad, profile_fn, line_list, (λ, f
             #sleep(0.2)
             #println(mean(λ_c_exact))
 
-            fit_result = fit_line_as_gaussian((λ_line, flux_line), mean(λ_c_exact))
+            fit_result = fit_line_as_gaussian((λ_line, flux_line), value(λ_c_exact))
 
             isnothing(fit_result) && continue
             # NOTE: the above may fail (convolution broadens the line too much
@@ -76,9 +78,11 @@ function calculate_min_squared_error_ew(ew_list_obs, ew_list_grid)
     found_in_both = intersect(keys(ew_list_obs), keys(ew_list_grid))
     lines_to_compare = filter(x -> x[1] in found_in_both, ew_list_obs)
 
+    #χ² = 0.0 + 0.0*Particles(MONTE_CARLO_NUM_SAMPLES)
     χ² = 0.0 ± 0.0
 
     if length(lines_to_compare) == 0
+        #return value(χ²) ± uncertainty(χ²)
         return χ²
     end
 
@@ -86,12 +90,18 @@ function calculate_min_squared_error_ew(ew_list_obs, ew_list_grid)
         W_λ_match = ew_list_obs[λ_c]
         W_λ_grid = ew_list_grid[λ_c]
 
+        #W_λ_match = measurement(mean(ew_list_obs[λ_c]), std(ew_list_obs[λ_c]))
+        #W_λ_grid = measurement(mean(ew_list_grid[λ_c]), std(ew_list_grid[λ_c]))
+
         χ² += (W_λ_match - W_λ_grid)^2
     end
-
+    
     χ² /= length(lines_to_compare)
+    
+    #println(χ²)
 
     χ²
+    #value(χ²) ± uncertainty(χ²)
 end
 
 # TODO: can I reuse EWs from the grid? If same R and vsini.
@@ -105,7 +115,7 @@ function match_ew_against_grid(ew_list_obs, Texc, R, vsini, grid_cache)#, ew_cac
     for filename in readdir(GRID_SPECTRA_FLUX_PATH)
         Teff = parse(Int64, filename[2:5])
         
-        !(mean(Texc) - std(Texc) <= Teff <= mean(Texc) + std(Texc)) && continue
+        !(value(Texc) - uncertainty(Texc) <= Teff <= value(Texc) + uncertainty(Texc)) && continue
         
         logg = parse(Float64, filename[8:11])
         FeH = parse(Float64, filename[23:27])
@@ -113,7 +123,6 @@ function match_ew_against_grid(ew_list_obs, Texc, R, vsini, grid_cache)#, ew_cac
         
         filepath = joinpath(GRID_SPECTRA_FLUX_PATH, filename)
         
-        # println("read_spectrum_ambre_grid")
         flux_grid = get!(grid_cache, filepath) do
             read_spectrum_ambre_grid(filepath)
         end
@@ -137,23 +146,21 @@ function match_ew_against_grid(ew_list_obs, Texc, R, vsini, grid_cache)#, ew_cac
         #    ew_list_grid
         #end
 
-        #println("calculate_min_squared_error_ew")
         χ² = calculate_min_squared_error_ew(ew_list_obs, ew_list_grid)
 
         Dict(parameters_grid => χ²)
         # push!(matches, parameters_grid => χ²)
     end
 
-    χ²_final, (Teff_final, logg_final, FeH_final, α_Fe_final) = @unsafe findmin(matches)
+    χ²_final, (Teff_final, logg_final, FeH_final, α_Fe_final) = findmin(matches)#@unsafe findmin(matches)
 
     ΔTeff, Δlogg, ΔFeH, Δα_Fe = 0.0, 0.0, 0.0, 0.0
 
-    # TODO: uncertainties seem to be null!?
     for ((Teff, logg, FeH, α_Fe), χ²) in matches
         # does the uncertainty interval for χ² intersect the uncertainty
         # interval for χ²? 
-        if mean(χ²_final) - std(χ²_final) <= mean(χ²) + std(χ²) &&
-           mean(χ²_final) + std(χ²_final) >= mean(χ²) - std(χ²)
+        if value(χ²_final) - uncertainty(χ²_final) <= value(χ²) + uncertainty(χ²) &&
+           value(χ²_final) + uncertainty(χ²_final) >= value(χ²) - uncertainty(χ²)
             ΔTeff = max(abs(Teff_final - Teff), ΔTeff)
             Δlogg = max(abs(logg_final - logg), Δlogg)
             ΔFeH = max(abs(FeH_final - FeH), ΔFeH)
@@ -161,5 +168,8 @@ function match_ew_against_grid(ew_list_obs, Texc, R, vsini, grid_cache)#, ew_cac
         end
     end
 
-    (Teff_final ± ΔTeff, logg_final ± Δlogg, FeH_final ± ΔFeH, α_Fe_final ± Δα_Fe)
+    (Teff_final ± ΔTeff, 
+     logg_final ± Δlogg, 
+     FeH_final ± ΔFeH, 
+     α_Fe_final ± Δα_Fe)
 end

@@ -1,7 +1,7 @@
 using Plots
 using Peaks
 using LsqFit
-using MonteCarloMeasurements
+using Measurements: ±, value, uncertainty
 using LinearAlgebra
 
 function central_moving_average_filter(N, yy)
@@ -89,7 +89,7 @@ function fit_line_as_gaussian((λ, flux), λ_c_corrected)
 
     W_λ = calculate_equivalent_width(σ, A, B)
 
-    if mean(W_λ) < 0 || std(W_λ)/mean(W_λ)*100 > W_λ_UNC_THRESHOLD
+    if W_λ < 0 || uncertainty(W_λ)/value(W_λ)*100 > W_λ_UNC_THRESHOLD
         # scatter(λ, flux)
         #println(length(gaussian_model.(λ, (x₀, σ, A, B))))
         # scatter!(λ, gaussian_model(λ, (mean(x₀), mean(σ), mean(A), mean(B))); legend=false)
@@ -102,7 +102,8 @@ function fit_line_as_gaussian((λ, flux), λ_c_corrected)
 end
 
 function calculate_equivalent_width(σ, A, B)
-    -sqrt(2π)*A*σ/B
+    W_λ = -sqrt(2π)*A*σ/B
+    #value(W_λ) + uncertainty(W_λ)*Particles(MONTE_CARLO_NUM_SAMPLES)
 end
 
 function correct_λ_for_vrad(λ_c, vrad)
