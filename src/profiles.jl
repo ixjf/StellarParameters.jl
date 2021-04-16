@@ -1,4 +1,5 @@
 using Statistics
+using Measurements: value
 
 function instrumental_profile((λ, flux), R)
     λ_mean = mean([λ[begin], λ[end]])
@@ -27,4 +28,27 @@ function rotational_profile(Δx, ϵ, λ_c, vsini) # vsini in km/s, Δx for spect
     kernel ./= sum(kernel) # normalize to [0,1]
 
     kernel
+end
+
+function convolve_simulated_profile(R, vsini, λ_c, continuum_flux, λ, flux)
+    flux = flux[:] # copy, don't want to alter `flux`
+    flux .-= value(continuum_flux) # remove constant factor before convolution
+
+    # FIXME: convolve1d uses mode='same'. EW after convolution
+    # shouldn't change, but it does because the line is truncated
+    # and I can no longer measure the entire area.
+    # This also means that I DON'T need to convolve with the simulated
+    # profile to determine EW...
+    if !ismissing(vsini)
+        Δλ = λ[2] - λ[1]
+        rp_kernel = rotational_profile(Δλ, EPSILON, value(λ_c), value(vsini))
+        flux = convolve1d(flux, rp_kernel)
+    end
+
+    ip_kernel = instrumental_profile((λ, flux), R)
+    flux = convolve1d(flux, ip_kernel)
+
+    flux .+= value(continuum_flux)
+
+    (λ, flux)
 end

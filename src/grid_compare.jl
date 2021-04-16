@@ -10,81 +10,14 @@ using Folds
 
 GridCache = ThreadSafeDict{String, Array{Float64, 1}}
 
-function convolve_simulated_profile(R, vsini, λ_c, continuum_flux, λ, flux)
-    flux = flux[:] # copy, don't want to alter `flux`
-    flux .-= value(continuum_flux) # remove constant factor before convolution
-
-    if !ismissing(vsini)
-        Δλ = λ[2] - λ[1]
-        rp_kernel = rotational_profile(Δλ, EPSILON, value(λ_c), value(vsini))
-        flux = convolve1d(flux, rp_kernel)
-    end
-
-    ip_kernel = instrumental_profile((λ, flux), R)
-    flux = convolve1d(flux, ip_kernel)
-
-    flux .+= value(continuum_flux)
-
-    (λ, flux)
-end
-
-function isolate_all_lines_found_in_spectrum(vrad, profile_fn, line_list, (λ, flux)) # line_list = tsantaki's
-    lines = Dict{Float64, Tuple{Measurement{Float64}, Array{Float64}, Array{Float64}}}()
-    #ew_list = Dict{Float64, Particles}()
-    ew_list = Dict{Float64, Measurement{Float64}}()
-    # TODO: make previous types type-safe
-
-    for λ_c_approx in line_list
-        !(λ[begin] <= λ_c_approx <= λ[end]) && continue
-
-        λ_c_corrected = !ismissing(vrad) ? correct_λ_for_vrad(λ_c_approx, value(vrad)) : λ_c_approx
-
-        λ_line, flux_line = isolate_line((λ, flux), λ_c_corrected)
-
-        fit_result = fit_line_as_gaussian((λ_line, flux_line), λ_c_corrected)
-
-        isnothing(fit_result) && continue
-
-        λ_c_exact, σ, A, B = fit_result
-        
-        if profile_fn !== nothing
-            # B = continuum_flux
-            #scatter(λ_line, flux_line)
-            λ_line, flux_line = profile_fn(λ_c_corrected, B, λ_line, flux_line)
-            #scatter!(λ_line, flux_line; legend=false)
-            #gui()
-            #sleep(0.2)
-            #println(mean(λ_c_exact))
-
-            fit_result = fit_line_as_gaussian((λ_line, flux_line), value(λ_c_exact))
-
-            isnothing(fit_result) && continue
-            # NOTE: the above may fail (convolution broadens the line too much
-            # and LsqFit can't find a good fit?)
-
-            λ_c_exact, σ, A, B = fit_result
-        end
-
-        W_λ = calculate_equivalent_width(σ, A, B)
-
-        push!(lines, λ_c_approx => (λ_c_exact, λ_line, flux_line))
-        push!(ew_list, λ_c_approx => W_λ)
-    end
-
-    (lines, ew_list)
-end
-
 function calculate_min_squared_error_ew(ew_list_obs, ew_list_grid)
     found_in_both = intersect(keys(ew_list_obs), keys(ew_list_grid))
     lines_to_compare = filter(x -> x[1] in found_in_both, ew_list_obs)
 
+    #println("Comparing $(length(lines_to_compare)) lines")
+
     #χ² = 0.0 + 0.0*Particles(MONTE_CARLO_NUM_SAMPLES)
     χ² = 0.0 ± 0.0
-
-    if length(lines_to_compare) == 0
-        #return value(χ²) ± uncertainty(χ²)
-        return χ²
-    end
 
     for λ_c in keys(lines_to_compare)
         W_λ_match = ew_list_obs[λ_c]
@@ -94,10 +27,13 @@ function calculate_min_squared_error_ew(ew_list_obs, ew_list_grid)
         #W_λ_grid = measurement(mean(ew_list_grid[λ_c]), std(ew_list_grid[λ_c]))
 
         χ² += (W_λ_match - W_λ_grid)^2
+
+        #println(uncertainty((W_λ_match - W_λ_grid)^2))
     end
     
     χ² /= length(lines_to_compare)
     
+    #println("Total χ²: $χ²")
     #println(χ²)
 
     χ²
@@ -139,9 +75,10 @@ function match_ew_against_grid(ew_list_obs, Texc, R, vsini, grid_cache)#, ew_cac
             # println("isolate_all_lines_found_in_spectrum")
             lines_grid, ew_list_grid = isolate_all_lines_found_in_spectrum(
                 0.0, 
-                (λ_c, continuum_flux, λ_line, flux_line) -> convolve_simulated_profile(R, vsini, λ_c, continuum_flux, λ_line, flux_line),
                 keys(ew_list_obs), 
-                (λ_grid, flux_grid))
+                (λ_grid, flux_grid),
+                0,
+                1)
             # FIXME: the above is sometimes taking >9 seconds!
         #    ew_list_grid
         #end
@@ -157,6 +94,8 @@ function match_ew_against_grid(ew_list_obs, Texc, R, vsini, grid_cache)#, ew_cac
     ΔTeff, Δlogg, ΔFeH, Δα_Fe = 0.0, 0.0, 0.0, 0.0
 
     for ((Teff, logg, FeH, α_Fe), χ²) in matches
+        #println(χ²)
+
         # does the uncertainty interval for χ² intersect the uncertainty
         # interval for χ²? 
         if value(χ²_final) - uncertainty(χ²_final) <= value(χ²) + uncertainty(χ²) &&

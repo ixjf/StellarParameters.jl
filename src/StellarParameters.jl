@@ -85,7 +85,7 @@ include("grid_compare.jl")
 
 # sisma_archive_path = joinpath(@__DIR__, "../../data/sisma_archive/")
 
-# ###
+# # ###
 
 # d = Dict()
 
@@ -104,7 +104,6 @@ include("grid_compare.jl")
 #     vrad = opt_data["VRAD"]
 #     lines, ew_list = isolate_all_lines_found_in_spectrum(
 #         vrad,
-#         nothing,
 #         keys(full_line_list),
 #         (λ, flux))
     
@@ -118,27 +117,60 @@ include("grid_compare.jl")
 # min_Teff = +Inf
 # max_Teff = -Inf
 
+# begin
+# 	file = joinpath(sisma_archive_path, "HD169822_20120724_0000_nor.fits")
+	
+# 	λ, flux, opt_data = read_spectrum_sisma(file)
+	
+# 	vrad = opt_data["VRAD"]
+	
+# 	lines, ew_list = isolate_all_lines_found_in_spectrum(
+# 		vrad,
+# 		keys(full_line_list),
+# 		(λ, flux))
+	
+# 	grid_cache = GridCache()
+	
+# 	best_combo_i, best_combo_j, _ = find_best_multiplet_combo_for_Texc_estimate(
+# 		weighted_median,
+# 		multiplet_list, 
+# 		Dict([λ_c_approx => (λ_c_approx,) for (λ_c_approx,_) in lines]), 
+# 		ew_list_Sun)
+
+# 	_, _, Texc = find_best_multiplet_combo_for_Texc_estimate(
+# 		weighted_median,
+# 		[multiplet_list[best_combo_i], multiplet_list[best_combo_j]],
+# 		lines,
+# 		ew_list)
+	
+# 	Teff, logg, FeH, α_Fe = match_ew_against_grid(ew_list, Texc, opt_data["R"], opt_data["VSINI"], grid_cache)
+
+#     println("Teff: $Teff logg: $logg FeH: $FeH α_Fe: $α_Fe")
+# end
+
 # grid_cache = GridCache()
 
 # for (filename, (λ, flux, opt_data, lines, ew_list)) in d
 #     best_combo_i, best_combo_j, _ = find_best_multiplet_combo_for_Texc_estimate(
+#         weighted_median,
 #         multiplet_list, 
-#         lines, 
+#         Dict([λ_c_approx => (λ_c_approx,) for (λ_c_approx,_) in lines]), 
 #         ew_list_Sun)
 
 #     _, _, Texc = find_best_multiplet_combo_for_Texc_estimate(
+#         weighted_median,
 #         [multiplet_list[best_combo_i], multiplet_list[best_combo_j]],
 #         lines,
 #         ew_list)
         
 #     Teff = opt_data["TEFF"]
     
-#     println("best combo: ($best_combo_i, $best_combo_j) Texc: $Texc Teff: $Teff")
+#     #println("best combo: ($best_combo_i, $best_combo_j) Texc: $Texc Teff: $Teff")
 
-#     scatter!([Teff], [Texc]; legend=false)
+#     #scatter!([Teff], [Texc]; legend=false)
     
-#     global min_Teff = min(Teff, min_Teff)
-#     global max_Teff = max(Teff, max_Teff)
+#     #global min_Teff = min(Teff, min_Teff)
+#     #global max_Teff = max(Teff, max_Teff)
 
 #     Teff, logg, FeH, α_Fe = match_ew_against_grid(ew_list, Texc, opt_data["R"], opt_data["VSINI"], grid_cache)
 
@@ -146,3 +178,9 @@ include("grid_compare.jl")
 # end
 
 # plot!([min_Teff, max_Teff], [min_Teff, max_Teff]; legend=false)
+
+
+# TODO: this is a mess! multiplet_list here, lines_used, ew_list! I don't
+# know which λ_c the function will use, and it's not obvious that lines
+# must have λ_c_exact = λ_c_approx for the Sun but that the λ and flux are not required
+# in the tuple!
