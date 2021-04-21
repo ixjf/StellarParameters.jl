@@ -1,10 +1,10 @@
 ### A Pluto.jl notebook ###
-# v0.12.21
+# v0.14.2
 
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ 40bbc780-8f17-11eb-343e-e1c079a00e28
+# ╔═╡ b2becdce-9eaa-11eb-3e6e-0fb4203c73ec
 begin
 	using Pkg
 	Pkg.activate("..")
@@ -15,112 +15,19 @@ begin
 	using Measurements: value, uncertainty
 end
 
-# ╔═╡ 652777f0-8f16-11eb-305e-33e87b6c651b
+# ╔═╡ c3c8ae70-9eaa-11eb-2d7d-310fcee9b3ed
 include("../src/StellarParameters.jl")
 
-# ╔═╡ 91b36e00-8f16-11eb-2685-4fa4e7e7e892
+# ╔═╡ c7670ae0-9eaa-11eb-3c60-6b9f4b0ce567
 full_line_list, ew_list_Sun = read_line_list()
 
-# ╔═╡ 92aa5bb0-8f17-11eb-150d-db473910cdf6
+# ╔═╡ ca61fb60-9eaa-11eb-2222-dd88d37de4b7
 multiplet_list = group_lines_into_multiplets(full_line_list)
 
-# ╔═╡ c8d0f7d0-8f17-11eb-3bb0-83b0103721f1
+# ╔═╡ ce2d8250-9eaa-11eb-067e-e19e370f8b05
 sisma_archive_path = joinpath(@__DIR__, "../../data/sisma_archive/")
 
-# ╔═╡ 8ac42a20-8f1c-11eb-355b-e1479c7b0dc5
-begin
-	d = Dict()
-	
-	for filename in filter(x -> endswith(x, "fits"), readdir(sisma_archive_path))
-		λ, flux, opt_data = read_spectrum_sisma(joinpath(sisma_archive_path, filename))
-		
-		vrad = opt_data["VRAD"]
-		lines, ew_list = isolate_all_lines_found_in_spectrum(
-			vrad,
-			keys(full_line_list),
-			(λ, flux))
-		
-		push!(d, filename => (λ, flux, opt_data, lines, ew_list))
-	end
-		
-	d
-end
-
-# ╔═╡ feb4495e-8f17-11eb-3052-55640f8e9bfe
-begin
-	Teffs = []
-	weighted_multiplet_data = []
-	unweighted_multiplet_data = []
-	
-	for (filename, (λ, flux, opt_data, lines, ew_list)) in d
-		best_combo_i_weighted, best_combo_j_weighted, _ = find_best_multiplet_combo_for_Texc_estimate(
-			weighted_median, 
-			multiplet_list, 
-			Dict([λ_c_approx => (λ_c_approx,) for (λ_c_approx,_) in lines]), 
-			ew_list_Sun)
-
-		_, _, Texc_weighted = find_best_multiplet_combo_for_Texc_estimate(
-			weighted_median, 
-			[multiplet_list[best_combo_i_weighted], multiplet_list[best_combo_j_weighted]],
-			lines,
-			ew_list)
-		
-		push!(weighted_multiplet_data, (best_combo_i_weighted, best_combo_j_weighted, Texc_weighted))
-		
-		best_combo_i_unweighted, best_combo_j_unweighted, _ = find_best_multiplet_combo_for_Texc_estimate(
-			unweighted_median, 
-			multiplet_list, 
-			lines, 
-			ew_list_Sun)
-
-		_, _, Texc_unweighted = find_best_multiplet_combo_for_Texc_estimate(
-			unweighted_median, 
-			[multiplet_list[best_combo_i_unweighted], multiplet_list[best_combo_j_unweighted]],
-			lines,
-			ew_list)
-		
-		push!(unweighted_multiplet_data, (best_combo_i_unweighted, best_combo_j_unweighted, Texc_unweighted))
-
-		Teff = opt_data["TEFF"]
-		
-		push!(Teffs, Teff)
-	end
-end
-
-# ╔═╡ 5cb65bae-8ff0-11eb-1d7f-79ea6ef8cf6b
-begin
-	p = scatter([], []; label="")
-	
-	scatter!(Teffs, map(x -> x[3], unweighted_multiplet_data); label="Unweighted median", markercolor=:grey22, markersize=2.5, markerstrokecolor=:grey22)
-	scatter!(Teffs, map(x -> x[3], weighted_multiplet_data); label="Weighted median", markercolor=:royalblue2, markersize=2.5, markerstrokecolor=:royalblue2)
-	
-	plot!([minimum(Teffs), maximum(Teffs)], [minimum(Teffs), maximum(Teffs)]; label="Reference")
-	xlabel!("Teff / K")
-	ylabel!("Texc / K")
-	
-	p
-end
-
-# ╔═╡ 26f7da10-9d3f-11eb-2bb4-1b32c3ec0d46
-md"Both methods give fairly similar temperature estimates. The temperatures seem to work best around ~ 5750 K (temperature of the Sun), and then perhaps get worse and worse as the temperature of the star increases (however, notice how it produces an accurate result for the star with Texc ~ 4200 K, which is in accordance to other papers I've found). However, we can see that the error bars for the unweighted median are much larger than for the weighted median. Therefore, the weighted median should be chosen."
-
-# ╔═╡ 87b410a0-8ff0-11eb-24b9-b7f48d7569b5
-begin
-	histo = Dict()
-	for i=1:length(MULTIPLETS),j=i+1:length(MULTIPLETS)
-		push!(histo, (i,j) => 1)
-	end
-	for (i,j,_) in unweighted_multiplet_data
-		histo[(i,j)] += 1
-	end
-	#MULTIPLETS, ["($(x[1]), $(x[2]))" for x in (collect(keys(histo)))], reshape(collect(values(histo)), 1, length(histo)), repeat([""], inner=length(histo)) 
-	groupedbar(["($(x[1]), $(x[2]))" for x in (collect(keys(histo)))], Int64.(reshape(collect(values(histo)), 1, length(histo))), group = repeat([""], inner=length(histo)), ylabel="No. times chosen", xlabel="Multiplet combo")
-end
-
-# ╔═╡ b257efa0-9d3f-11eb-1b79-53bfb7068707
-md"One multiplet combo seems to be preferred. However, there are other combos which are also selected many times. I wonder if the difference in results is very large, or if they're chosen for a very small difference in the error during calibration."
-
-# ╔═╡ 353cfb90-9d22-11eb-25b1-fdb1e6bf014c
+# ╔═╡ d1580e50-9eaa-11eb-1364-55020bd1fe06
 begin
 	all_spectra_ew_filter_comp = Dict()
 	
@@ -138,7 +45,9 @@ begin
 				vrad,
 				keys(full_line_list),
 				(λ, flux),
-				N)
+				N,
+				1,
+				25)
 
 			best_combo_i, best_combo_j, _ = find_best_multiplet_combo_for_Texc_estimate(
 				weighted_median,
@@ -163,7 +72,7 @@ begin
 	all_spectra_ew_filter_comp
 end
 
-# ╔═╡ a10a4380-9d24-11eb-3215-11828ecd1642
+# ╔═╡ ddee8f40-9eaa-11eb-23c9-ff7ebe92c868
 begin
 	p_Teff_ew_filter = scatter([], [], label="", legend=nothing)#:outerright)
 	p_logg_ew_filter = scatter([], [], label="", legend=nothing)
@@ -198,25 +107,25 @@ begin
 	#p_1_Teff#(k[3], p_1_Teff)
 end
 
-# ╔═╡ 60576220-9e94-11eb-24c0-ed61e8eeaf25
+# ╔═╡ e3657c40-9eaa-11eb-0e31-a768702858a7
 md"Window size = 1"
 
-# ╔═╡ 3c843260-9d3b-11eb-060b-e3a7fcc36502
+# ╔═╡ e72eb940-9eaa-11eb-1600-5f4fe79168de
 p_Teff_ew_filter
 
-# ╔═╡ 3e634b40-9d3e-11eb-106e-2760d026e94e
+# ╔═╡ ebb9e6b0-9eaa-11eb-3654-bb712597a80f
 p_logg_ew_filter
 
-# ╔═╡ 460814c0-9d3e-11eb-0eee-d12a0da82fc3
+# ╔═╡ ef8baf30-9eaa-11eb-3c4b-b310ec089d2f
 p_FeH_ew_filter
 
-# ╔═╡ 92a1e9f0-9d3e-11eb-095e-b32071933ca5
+# ╔═╡ f36f7910-9eaa-11eb-310a-45ab97855651
 md"There seems to be no recognizable pattern. If it were the case that more filter iterations produced better results, I should have seen all the points converging to the smallest error as x increased. That is not observed. Furthermore, the uncertainties are all more or less within range of uncertainty (i.e. step) in grid parameters (2*uncertainty, could swing towards the next step), which means the code can't really produce any more accurate values."
 
-# ╔═╡ e76f6dc0-9e94-11eb-02f7-83caaf29b4d6
+# ╔═╡ f851a020-9eaa-11eb-24ab-156b02dfb2a1
 md"N=0 and window size = 1 or window size = 5 should replicate these results. Perhaps window size = 5 helps? Likely not, but let's see."
 
-# ╔═╡ 16c706ee-9e95-11eb-18aa-57a9379c3ff4
+# ╔═╡ fe207120-9eaa-11eb-08e1-870ace38f2ed
 begin
 	ew_filter_n0_window_size = Dict()
 	
@@ -235,7 +144,8 @@ begin
 				keys(full_line_list),
 				(λ, flux),
 				0,
-			    window_size)
+			    window_size,
+				25)
 
 			best_combo_i, best_combo_j, _ = find_best_multiplet_combo_for_Texc_estimate(
 				weighted_median,
@@ -260,7 +170,7 @@ begin
 	ew_filter_n0_window_size
 end
 
-# ╔═╡ 4862c3c0-9e95-11eb-3e16-7d37c85c5935
+# ╔═╡ 01f239a0-9eab-11eb-3c77-29b735566b38
 begin
 	p_Teff_ew_filter_n0_ws = scatter([], [], label="", legend=nothing)#:outerright)
 	p_logg_ew_filter_n0_ws = scatter([], [], label="", legend=nothing)
@@ -286,37 +196,117 @@ begin
 	end
 end
 
-# ╔═╡ 6b4b8840-9e95-11eb-0d43-cfeddf3508b4
+# ╔═╡ 06a47710-9eab-11eb-2ead-4bb75bccb346
 p_Teff_ew_filter_n0_ws
 
-# ╔═╡ 6eaeb070-9e95-11eb-133f-f59df21a7e62
+# ╔═╡ 0a3e3fa0-9eab-11eb-119b-1f2b6028b29f
 p_logg_ew_filter_n0_ws
 
-# ╔═╡ 7418f340-9e95-11eb-030f-39e81ddcccc2
+# ╔═╡ 0d4f0210-9eab-11eb-3fa7-a35ae75a8b7b
 p_FeH_ew_filter_n0_ws
 
+# ╔═╡ 1192510e-9eab-11eb-1337-b5932bb7da0e
+md"No significant difference."
+
+# ╔═╡ 7bb97b60-9eb3-11eb-13a4-df7c650d2608
+begin
+	p_Teff_ew_filter_n0_ws_u = scatter([], [], label="", legend=nothing)#:outerright)
+	p_logg_ew_filter_n0_ws_u = scatter([], [], label="", legend=nothing)
+	p_FeH_ew_filter_n0_ws_u = scatter([], [], label="", legend=nothing)
+
+	for (filename, ew_filter_comp) in ew_filter_n0_window_size
+		_, _, opt_data = read_spectrum_sisma(joinpath(sisma_archive_path, filename))
+
+		Teff_ref = opt_data["TEFF"]
+		logg_ref = opt_data["LOGG"]
+		FeH_ref = opt_data["FEH"]
+			
+		ew_filter_comp = sort!(collect(ew_filter_comp); by=x -> x[1])
+		
+		Ns = [N for (N, _) in ew_filter_comp]
+		Teffs = [Teff for (_, (Teff, _, _, _)) in ew_filter_comp]
+		loggs = [logg for (_, (_, logg, _, _)) in ew_filter_comp]
+		FeHs = [FeH for (_, (_, _, FeH, _)) in ew_filter_comp]
+		
+		scatter!(p_Teff_ew_filter_n0_ws_u, Ns, uncertainty.(Teffs); linewidth=2, xlabel="Window size", ylabel="Measurement uncertainty / K")
+		scatter!(p_logg_ew_filter_n0_ws_u, Ns, uncertainty.(loggs); linewidth=2, xlabel="Window size", ylabel="Measurement uncertainty / cm s^-2")
+		scatter!(p_FeH_ew_filter_n0_ws_u, Ns, uncertainty.(FeHs); linewidth=2, xlabel="Window size", ylabel="Measurement uncertainty / dex")
+	end
+end
+
+# ╔═╡ de76ed92-9eb4-11eb-2aeb-a9d64be6cceb
+p_Teff_ew_filter_n0_ws_u
+
+# ╔═╡ f0d317c0-9eb4-11eb-3d2a-0bf3dcaf4e1d
+p_logg_ew_filter_n0_ws_u
+
+# ╔═╡ f8335e30-9eb4-11eb-2abb-b72a2ef0e2c2
+p_FeH_ew_filter_n0_ws_u
+
+# ╔═╡ b9aaf4b0-9eb5-11eb-2a08-e1f268953884
+md"Uncertainties are not significantly smaller, or they are inexistent, window size = 1 or window size = 5. Perhaps not so with N=0 and N=5."
+
+# ╔═╡ e21861d0-9eb5-11eb-3701-379e2640a589
+begin
+	p_Teff_ew_filter_n0_5_u = scatter([], [], label="", legend=nothing)#:outerright)
+	p_logg_ew_filter_n0_5_u = scatter([], [], label="", legend=nothing)
+	p_FeH_ew_filter_n0_5_u = scatter([], [], label="", legend=nothing)
+
+	for (filename, ew_filter_comp) in all_spectra_ew_filter_comp
+		_, _, opt_data = read_spectrum_sisma(joinpath(sisma_archive_path, filename))
+
+		Teff_ref = opt_data["TEFF"]
+		logg_ref = opt_data["LOGG"]
+		FeH_ref = opt_data["FEH"]
+			
+		ew_filter_comp = sort!(collect(ew_filter_comp); by=x -> x[1])
+		
+		Ns = [N for (N, _) in ew_filter_comp]
+		Teffs = [Teff for (_, (Teff, _, _, _)) in ew_filter_comp]
+		loggs = [logg for (_, (_, logg, _, _)) in ew_filter_comp]
+		FeHs = [FeH for (_, (_, _, FeH, _)) in ew_filter_comp]
+		
+		plot!(p_Teff_ew_filter_n0_5_u, Ns, uncertainty.(Teffs); linestyle=:dash, linewidth=2, xlabel="No. iterations", ylabel="Teff obtained, uncertainty / K")
+		plot!(p_logg_ew_filter_n0_5_u, Ns, uncertainty.(loggs); linestyle=:dash, linewidth=2, xlabel="No. iterations", ylabel="logg obtained, uncertainty / cm s^-2")
+		plot!(p_FeH_ew_filter_n0_5_u, Ns, uncertainty.(FeHs); linestyle=:dash, linewidth=2, xlabel="No. iterations", ylabel="[Fe/H] obtained, uncertainty / dex")
+	end
+end
+
+# ╔═╡ 1406f990-9eb6-11eb-3fe2-b59e1baf1be7
+p_Teff_ew_filter_n0_5_u
+
+# ╔═╡ 16f7ff00-9eb6-11eb-3130-b321b24cd955
+p_logg_ew_filter_n0_5_u
+
+# ╔═╡ 1adade80-9eb6-11eb-2d94-815be0e86182
+p_FeH_ew_filter_n0_5_u
+
 # ╔═╡ Cell order:
-# ╠═40bbc780-8f17-11eb-343e-e1c079a00e28
-# ╠═652777f0-8f16-11eb-305e-33e87b6c651b
-# ╠═91b36e00-8f16-11eb-2685-4fa4e7e7e892
-# ╠═92aa5bb0-8f17-11eb-150d-db473910cdf6
-# ╠═c8d0f7d0-8f17-11eb-3bb0-83b0103721f1
-# ╠═8ac42a20-8f1c-11eb-355b-e1479c7b0dc5
-# ╠═feb4495e-8f17-11eb-3052-55640f8e9bfe
-# ╠═5cb65bae-8ff0-11eb-1d7f-79ea6ef8cf6b
-# ╟─26f7da10-9d3f-11eb-2bb4-1b32c3ec0d46
-# ╠═87b410a0-8ff0-11eb-24b9-b7f48d7569b5
-# ╟─b257efa0-9d3f-11eb-1b79-53bfb7068707
-# ╠═353cfb90-9d22-11eb-25b1-fdb1e6bf014c
-# ╠═a10a4380-9d24-11eb-3215-11828ecd1642
-# ╟─60576220-9e94-11eb-24c0-ed61e8eeaf25
-# ╠═3c843260-9d3b-11eb-060b-e3a7fcc36502
-# ╠═3e634b40-9d3e-11eb-106e-2760d026e94e
-# ╠═460814c0-9d3e-11eb-0eee-d12a0da82fc3
-# ╟─92a1e9f0-9d3e-11eb-095e-b32071933ca5
-# ╟─e76f6dc0-9e94-11eb-02f7-83caaf29b4d6
-# ╠═16c706ee-9e95-11eb-18aa-57a9379c3ff4
-# ╠═4862c3c0-9e95-11eb-3e16-7d37c85c5935
-# ╠═6b4b8840-9e95-11eb-0d43-cfeddf3508b4
-# ╠═6eaeb070-9e95-11eb-133f-f59df21a7e62
-# ╠═7418f340-9e95-11eb-030f-39e81ddcccc2
+# ╠═b2becdce-9eaa-11eb-3e6e-0fb4203c73ec
+# ╠═c3c8ae70-9eaa-11eb-2d7d-310fcee9b3ed
+# ╠═c7670ae0-9eaa-11eb-3c60-6b9f4b0ce567
+# ╠═ca61fb60-9eaa-11eb-2222-dd88d37de4b7
+# ╠═ce2d8250-9eaa-11eb-067e-e19e370f8b05
+# ╠═d1580e50-9eaa-11eb-1364-55020bd1fe06
+# ╠═ddee8f40-9eaa-11eb-23c9-ff7ebe92c868
+# ╟─e3657c40-9eaa-11eb-0e31-a768702858a7
+# ╠═e72eb940-9eaa-11eb-1600-5f4fe79168de
+# ╠═ebb9e6b0-9eaa-11eb-3654-bb712597a80f
+# ╠═ef8baf30-9eaa-11eb-3c4b-b310ec089d2f
+# ╟─f36f7910-9eaa-11eb-310a-45ab97855651
+# ╟─f851a020-9eaa-11eb-24ab-156b02dfb2a1
+# ╠═fe207120-9eaa-11eb-08e1-870ace38f2ed
+# ╠═01f239a0-9eab-11eb-3c77-29b735566b38
+# ╠═06a47710-9eab-11eb-2ead-4bb75bccb346
+# ╠═0a3e3fa0-9eab-11eb-119b-1f2b6028b29f
+# ╠═0d4f0210-9eab-11eb-3fa7-a35ae75a8b7b
+# ╟─1192510e-9eab-11eb-1337-b5932bb7da0e
+# ╠═7bb97b60-9eb3-11eb-13a4-df7c650d2608
+# ╠═de76ed92-9eb4-11eb-2aeb-a9d64be6cceb
+# ╠═f0d317c0-9eb4-11eb-3d2a-0bf3dcaf4e1d
+# ╠═f8335e30-9eb4-11eb-2abb-b72a2ef0e2c2
+# ╟─b9aaf4b0-9eb5-11eb-2a08-e1f268953884
+# ╠═e21861d0-9eb5-11eb-3701-379e2640a589
+# ╠═1406f990-9eb6-11eb-3fe2-b59e1baf1be7
+# ╠═16f7ff00-9eb6-11eb-3130-b321b24cd955
+# ╠═1adade80-9eb6-11eb-2d94-815be0e86182

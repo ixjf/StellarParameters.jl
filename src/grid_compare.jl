@@ -41,7 +41,7 @@ function calculate_min_squared_error_ew(ew_list_obs, ew_list_grid)
 end
 
 # TODO: can I reuse EWs from the grid? If same R and vsini.
-function match_ew_against_grid(ew_list_obs, Texc, R, vsini, grid_cache)#, ew_cache)
+function match_ew_against_grid(ew_list_obs, Texc, grid_cache)#, ew_cache)
     λ_grid = get!(grid_cache, GRID_SPECTRA_WAVE_PATH) do
         read_spectrum_ambre_grid(GRID_SPECTRA_WAVE_PATH)
     end
@@ -89,6 +89,8 @@ function match_ew_against_grid(ew_list_obs, Texc, R, vsini, grid_cache)#, ew_cac
         # push!(matches, parameters_grid => χ²)
     end
 
+    isempty(matches) && return nothing
+
     χ²_final, (Teff_final, logg_final, FeH_final, α_Fe_final) = findmin(matches)#@unsafe findmin(matches)
 
     ΔTeff, Δlogg, ΔFeH, Δα_Fe = 0.0, 0.0, 0.0, 0.0
@@ -107,8 +109,8 @@ function match_ew_against_grid(ew_list_obs, Texc, R, vsini, grid_cache)#, ew_cac
         end
     end
 
-    (Teff_final ± ΔTeff, 
-     logg_final ± Δlogg, 
-     FeH_final ± ΔFeH, 
-     α_Fe_final ± Δα_Fe)
+    (Teff_final ± (ΔTeff + GRID_TEFF_UNC), 
+     logg_final ± (Δlogg + GRID_LOGG_UNC), 
+     FeH_final ± (ΔFeH + GRID_FEH_UNC), 
+     α_Fe_final ± (Δα_Fe + GRID_α_FE_UNC))
 end

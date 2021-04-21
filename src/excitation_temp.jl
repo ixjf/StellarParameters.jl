@@ -3,19 +3,31 @@ using LsqFit
 using Statistics
 using Measurements: value, uncertainty, ±
 
-function fit_curve_of_growth(xx, yy)
+function fit_curve_of_growth(xx, yy, curve_fit_σ_clip_threshold)
     p0 = [1.0, 0.0]
     local fit
 
     while true
-        fit = curve_fit(linear_model, xx, yy, p0)
+        try
+            fit = curve_fit(linear_model, xx, yy, p0)
+        catch
+            return nothing
+        end
+
+        !fit.converged && return nothing
+
+        (length(yy) != length(xx) || length(yy) < 2) && return nothing 
 
         # # TODO: is this necessary? looks like all fits are linear!
         # sum_residuals = sum(residuals(fit))
         # if sum_residuals > MULTIPLET_LINFIT_RESIDUALS_THRESHOLD
         #     return nothing
         # end
-
+        #plot(xx, [m*x + b for x in xx])
+        #scatter(xx, yy)
+        #gui()
+        #sleep(5)
+        
         σ = √(mse(fit))
         m, b = coef(fit)
         yy_pred = [m*x + b for x in xx]
@@ -27,7 +39,7 @@ function fit_curve_of_growth(xx, yy)
             x = xx[i]
             y_pred = yy_pred[i]
 
-            if abs(y - y_pred) > σ*CURVE_OF_GROWTH_SIGMACLIP
+            if abs(y - y_pred) > σ*curve_fit_σ_clip_threshold
                 push!(outliers, i)
             end
         end
@@ -50,10 +62,13 @@ function calculate_curve_of_growth(multiplet, lines_used, ew_list)
         λ_c_exact = value(lines_used[λ_c_approx][1])
         push!(xx, line_data.loggf + log10(λ_c_exact))
         push!(yy, log10(value(ew_list[λ_c_approx])/λ_c_exact))
-        # TODO: should I propagate uncertainty of EW to here?
-        # this is a problem because some of the particles in the particle
-        # distribution for some W_λ might have W_λ negative, so
-        # log10 comes out wrong.
+
+        # begin
+        #     λ_c_exact = lines_used[λ_c_approx][1]
+        #     x = line_data.loggf + log10(λ_c_exact)
+        #     y = log10(ew_list[λ_c_approx]/λ_c_exact)
+        #     println(uncertainty(x), "\t", uncertainty(y))
+        # end
     end
 
     (xx, yy)
@@ -70,24 +85,32 @@ function group_lines_into_multiplets(line_list) # TODO: take multiplet EP ranges
     multiplets
 end
 
-function find_best_multiplet_combo_for_Texc_estimate(alg, multiplet_list, lines_used, ew_list)
+function find_best_multiplet_combo_for_Texc_estimate(
+        alg, multiplet_list, lines_used, ew_list, 
+        curve_fit_σ_clip_threshold=CURVE_OF_GROWTH_SIGMACLIP)
     prev_error = +Inf # how exact (compared to the Sun's temperature) it is
     best_combo_i, best_combo_j = 0, 0
     Texc = 0.0 ± 0.0
 
     for i=1:length(multiplet_list), j=i+1:length(multiplet_list)
+        multiplet_i = filter(kv -> kv[1] in keys(lines_used), multiplet_list[i])
+
         xx1, yy1 = calculate_curve_of_growth(multiplet_list[i], lines_used, ew_list)
-        fit1 = fit_curve_of_growth(xx1, yy1)
+        fit1 = fit_curve_of_growth(xx1, yy1, curve_fit_σ_clip_threshold)
+
+        isnothing(fit1) && continue
 
         # TODO: same as below
-        multiplet_i = filter(kv -> kv[1] in keys(lines_used), multiplet_list[i])
         χ₁ = sum([line_data.χ for (_, line_data) in multiplet_i])/length(multiplet_i)
 
+        multiplet_j = filter(kv -> kv[1] in keys(lines_used), multiplet_list[j])
+
         xx2, yy2 = calculate_curve_of_growth(multiplet_list[j], lines_used, ew_list)
-        fit2 = fit_curve_of_growth(xx2, yy2)
+        fit2 = fit_curve_of_growth(xx2, yy2, curve_fit_σ_clip_threshold)
+
+        isnothing(fit2) && continue
 
         # TODO: Doing this multiple times for the same multiplets...
-        multiplet_j = filter(kv -> kv[1] in keys(lines_used), multiplet_list[j])
         χ₂ = sum([line_data.χ for (_, line_data) in multiplet_j])/length(multiplet_j)
 
         new_Texc_est = calculate_Texc_from_COG_pair(alg, (χ₁, xx1, fit1), (χ₂, xx2, fit2))

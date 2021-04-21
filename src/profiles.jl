@@ -30,9 +30,9 @@ function rotational_profile(Δx, ϵ, λ_c, vsini) # vsini in km/s, Δx for spect
     kernel
 end
 
-function convolve_simulated_profile(R, vsini, λ_c, continuum_flux, λ, flux)
+function convolve_simulated_profile(R, vsini, ϵ, λ_c, continuum_flux, λ, flux)
     flux = flux[:] # copy, don't want to alter `flux`
-    flux .-= value(continuum_flux) # remove constant factor before convolution
+    flux .-= continuum_flux # remove constant factor before convolution
 
     # FIXME: convolve1d uses mode='same'. EW after convolution
     # shouldn't change, but it does because the line is truncated
@@ -41,14 +41,14 @@ function convolve_simulated_profile(R, vsini, λ_c, continuum_flux, λ, flux)
     # profile to determine EW...
     if !ismissing(vsini)
         Δλ = λ[2] - λ[1]
-        rp_kernel = rotational_profile(Δλ, EPSILON, value(λ_c), value(vsini))
+        rp_kernel = rotational_profile(Δλ, ϵ, value(λ_c), value(vsini))
         flux = convolve1d(flux, rp_kernel)
     end
 
     ip_kernel = instrumental_profile((λ, flux), R)
     flux = convolve1d(flux, ip_kernel)
 
-    flux .+= value(continuum_flux)
+    flux .+= continuum_flux
 
     (λ, flux)
 end

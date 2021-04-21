@@ -3,6 +3,7 @@ using Peaks
 using LsqFit
 using Measurements: ±, value, uncertainty, Measurement
 using LinearAlgebra
+using Statistics
 
 function central_moving_average_filter(N, yy)
     for i=1:N
@@ -50,7 +51,7 @@ function isolate_line((λ, flux), λ_c_approx, line_filter_iterations, line_filt
         λ, 
         flux_filtered, 
         λ_c_approx, 
-        SPECTRUM_PEAK_WINDOW_SIZE)
+        line_filter_window_size)
 
     λ = λ[left_bound:right_bound]
     flux = flux[left_bound:right_bound]
@@ -58,21 +59,26 @@ function isolate_line((λ, flux), λ_c_approx, line_filter_iterations, line_filt
     (λ, flux)
 end
 
-function fit_line_as_gaussian((λ, flux), λ_c_corrected)
+function fit_line_as_gaussian((λ, flux), λ_c, W_λ_unc_threshold=W_λ_UNC_THRESHOLD)
+    #println(λ_c_corrected)
+    
+    # TODO: improve initial guess => increase number of lines used
+    p0 = [λ_c, 0.1, -1.0, mean(flux)]
+    
     x₀, σ, A, B = nothing, nothing, nothing, nothing
     x₀_error, σ_error, A_error, B_error = nothing, nothing, nothing, nothing
 
-    #println(λ_c_corrected)
-
     try
-        fit = curve_fit(gaussian_model, λ, flux, [λ_c_corrected, 0.1, -1.0, 1.0])
+        # TODO: pass Jacobian
+        fit = curve_fit(gaussian_model, λ, flux, p0)
 
         !fit.converged && return nothing #begin; println("!converged"); return nothing; end;
-
+    
         x₀, σ, A, B = coef(fit)
-
+    
         x₀_error, σ_error, A_error, B_error = stderror(fit)
     catch e
+        # println("exception rip")
         #scatter(λ, flux; legend=false)
         #gui()
         #sleep(0.2)
@@ -80,6 +86,10 @@ function fit_line_as_gaussian((λ, flux), λ_c_corrected)
         #println(stacktrace(catch_backtrace()))
         return nothing
     end
+
+    # plot(λ, gaussian_model(λ, (x₀, σ, A, B)))
+    # gui()
+    # sleep(3)
  
     x₀ = x₀ ± x₀_error
     σ = σ ± σ_error
@@ -88,7 +98,7 @@ function fit_line_as_gaussian((λ, flux), λ_c_corrected)
 
     W_λ = calculate_equivalent_width(σ, A, B)
 
-    if W_λ < 0 || uncertainty(W_λ)/value(W_λ)*100 > W_λ_UNC_THRESHOLD
+    if W_λ < 0 || uncertainty(W_λ)/value(W_λ)*100 > W_λ_unc_threshold
         # scatter(λ, flux)
         #println(length(gaussian_model.(λ, (x₀, σ, A, B))))
         # scatter!(λ, gaussian_model(λ, (mean(x₀), mean(σ), mean(A), mean(B))); legend=false)
@@ -110,30 +120,47 @@ function correct_λ_for_vrad(λ_c, vrad)
 end
 
 function isolate_all_lines_found_in_spectrum(
-        vrad, line_list, (λ, flux), 
+        vrad, line_list, (λ, flux), # line_list = tsantaki's
         line_filter_iterations=SPECTRUM_FILTER_ITERATIONS, 
-        line_filter_window_size=SPECTRUM_PEAK_WINDOW_SIZE) # line_list = tsantaki's
+        line_filter_window_size=SPECTRUM_PEAK_WINDOW_SIZE,
+        W_λ_unc_threshold=W_λ_UNC_THRESHOLD)
     lines = Dict{Float64, Tuple{Measurement{Float64}, Array{Float64}, Array{Float64}}}()
     #ew_list = Dict{Float64, Particles}()
     ew_list = Dict{Float64, Measurement{Float64}}()
     # TODO: make previous types type-safe
 
     for λ_c_approx in line_list
-        !(λ[begin] <= λ_c_approx <= λ[end]) && continue
-
         λ_c_corrected = !ismissing(vrad) ? correct_λ_for_vrad(λ_c_approx, value(vrad)) : λ_c_approx
+        
+        if !(λ[begin] <= λ_c_corrected <= λ[end])
+            #println("line not in spectrum [λ_c_corrected: $λ_c_corrected, λ_c_begin: $(λ[begin]), λ_c_end: $(λ[end])")
+            continue
+        end
 
-        λ_line, flux_line = isolate_line((λ, flux), λ_c_corrected, line_filter_iterations, line_filter_window_size)
+        λ_line, flux_line = isolate_line(
+            (λ, flux), 
+            λ_c_corrected, 
+            line_filter_iterations, 
+            line_filter_window_size)
+            
+        fit_result = fit_line_as_gaussian((λ_line, flux_line), λ_c_corrected, W_λ_unc_threshold)
+        
+        #scatter(λ_line, flux_line)
+        #gui()
+        #sleep(1)
 
-        fit_result = fit_line_as_gaussian((λ_line, flux_line), λ_c_corrected)
-
-        isnothing(fit_result) && continue
+        if isnothing(fit_result)
+            #println("nothing")
+            continue
+        end
 
         λ_c_exact, σ, A, B, W_λ = fit_result
 
         push!(lines, λ_c_approx => (λ_c_exact, λ_line, flux_line))
         push!(ew_list, λ_c_approx => W_λ)
     end
+
+    #println(length(line_list), " ", i, " ", length(lines), " ", length(ew_list))
 
     (lines, ew_list)
 end
