@@ -68,7 +68,9 @@ function match_ew_against_grid(ew_list_obs, Texc, grid_cache)#, ew_cache)
     
     # matches = ThreadSafeDict{Tuple{Int64, Float64, Float64, Float64}, Particles{Float64, MONTE_CARLO_NUM_SAMPLES}}()
     
-    matches = Folds.mapreduce(merge, spectra; init=Dict()) do (parameters_grid, flux_grid)
+    matches = Dict()
+    
+    for (parameters_grid, flux_grid) in spectra
         #println("\t Matching against: $filename")
 
         #ew_list_grid = get!(ew_cache, (filename, R, !ismissing(vsini) ? mean(vsini) : 0.0)) do
@@ -77,16 +79,16 @@ function match_ew_against_grid(ew_list_obs, Texc, grid_cache)#, ew_cache)
                 0.0, 
                 keys(ew_list_obs), 
                 (λ_grid, flux_grid),
-                0,
-                1)
+                5, # TODO: make this param adjustable
+                5, # TODO: same
+                12.5) # TODO: same
             # FIXME: the above is sometimes taking >9 seconds!
         #    ew_list_grid
         #end
 
         χ² = calculate_min_squared_error_ew(ew_list_obs, ew_list_grid)
 
-        Dict(parameters_grid => χ²)
-        # push!(matches, parameters_grid => χ²)
+        push!(matches, parameters_grid => χ²)
     end
 
     isempty(matches) && return nothing
@@ -102,15 +104,20 @@ function match_ew_against_grid(ew_list_obs, Texc, grid_cache)#, ew_cache)
         # interval for χ²? 
         if value(χ²_final) - uncertainty(χ²_final) <= value(χ²) + uncertainty(χ²) &&
            value(χ²_final) + uncertainty(χ²_final) >= value(χ²) - uncertainty(χ²)
-            ΔTeff = max(abs(Teff_final - Teff), ΔTeff)
-            Δlogg = max(abs(logg_final - logg), Δlogg)
-            ΔFeH = max(abs(FeH_final - FeH), ΔFeH)
-            Δα_Fe = max(abs(α_Fe_final - α_Fe), Δα_Fe)
+            ΔTeff = max(abs(value(Teff_final - Teff)), ΔTeff)
+            Δlogg = max(abs(value(logg_final - logg)), Δlogg)
+            ΔFeH = max(abs(value(FeH_final - FeH)), ΔFeH)
+            Δα_Fe = max(abs(value(α_Fe_final - α_Fe)), Δα_Fe)
         end
     end
 
-    (Teff_final ± (ΔTeff + GRID_TEFF_UNC), 
-     logg_final ± (Δlogg + GRID_LOGG_UNC), 
-     FeH_final ± (ΔFeH + GRID_FEH_UNC), 
-     α_Fe_final ± (Δα_Fe + GRID_α_FE_UNC))
+    ΔTeff += GRID_TEFF_UNC
+    Δlogg += GRID_LOGG_UNC
+    ΔFeH += GRID_FEH_UNC
+    Δα_Fe += GRID_α_FE_UNC
+
+    (Teff_final ± ΔTeff, 
+     logg_final ± Δlogg, 
+     FeH_final ± ΔFeH, 
+     α_Fe_final ± Δα_Fe)
 end

@@ -96,12 +96,14 @@ end
 begin
 	p = scatter([], []; label="")
 	
-	scatter!(Teffs, map(x -> x[3], unweighted_multiplet_data); label="Unweighted median", markercolor=:grey22, markersize=2.5, markerstrokecolor=:grey22)
-	scatter!(Teffs, map(x -> x[3], weighted_multiplet_data); label="Weighted median", markercolor=:blue1, markersize=2.5, markerstrokecolor=:blue1, markershape=:xcross, ylim=(3000, 8000))
+	scatter!(1:length(unweighted_multiplet_data), map(x -> x[3], unweighted_multiplet_data) .- Teffs; label="Método 1", markercolor=:grey22, markersize=2.5, markerstrokecolor=:grey22, ylim=(-4500, 4500))
+	scatter!(1:length(weighted_multiplet_data), map(x -> x[3], weighted_multiplet_data) .- Teffs; label="Método 2", markercolor=:blue1, markersize=2.5, markerstrokecolor=:blue1, ylim=(-4500, 4500))
 	
-	plot!([minimum(Teffs), maximum(Teffs)], [minimum(Teffs), maximum(Teffs)]; label="Reference")
-	xlabel!("Teff / K")
-	ylabel!("Texc / K")
+	hline!(p, [0]; label="")
+	#plot!([1, length(weighted_multiplet_data)], [minimum(Teffs), maximum(Teffs)]; label="Linha de referência", legend=:bottomright)
+	ylabel!("Texc - Teff ref / K")
+	
+	savefig(p, "Texc_Teff_multipletos.pdf")
 	
 	p
 end
@@ -113,13 +115,17 @@ md"Both methods give fairly similar temperature estimates. The temperatures seem
 begin
 	histo = Dict()
 	for i=1:length(MULTIPLETS),j=i+1:length(MULTIPLETS)
-		push!(histo, (i,j) => 1)
+		push!(histo, (i,j) => 0)
 	end
-	for (i,j,_) in unweighted_multiplet_data
+	for (i,j,_) in weighted_multiplet_data
 		histo[(i,j)] += 1
 	end
 	#MULTIPLETS, ["($(x[1]), $(x[2]))" for x in (collect(keys(histo)))], reshape(collect(values(histo)), 1, length(histo)), repeat([""], inner=length(histo)) 
-	groupedbar(["($(x[1]), $(x[2]))" for x in (collect(keys(histo)))], Int64.(reshape(collect(values(histo)), 1, length(histo))), group = repeat([""], inner=length(histo)), ylabel="No. times chosen", xlabel="Multiplet combo")
+	p_multiplet_histo = groupedbar(["($(x[1]), $(x[2]))" for x in (collect(keys(histo)))], Int64.(reshape(collect(values(histo)), 1, length(histo))), group = repeat([""], inner=length(histo)), ylabel="Nº vezes escolhido", xlabel="Combinação de multipletos")
+	
+	savefig(p_multiplet_histo, "multiplet_combo_histo.pdf")
+	
+	p_multiplet_histo
 end
 
 # ╔═╡ b257efa0-9d3f-11eb-1b79-53bfb7068707
@@ -150,12 +156,14 @@ end
 begin
 	p_1_4_combo = scatter([], []; label="")
 	
-	scatter!(Teffs, map(x -> x[3], weighted_multiplet_data); label="Texc (per-spectrum combo)", markercolor=:royalblue2, markersize=2.5, markerstrokecolor=:royalblue2)
-	scatter!(p_1_4_combo, Teffs_1_4_combo, multiplet_data_1_4_combo; label="Texc (combo 1+4)", markercolor=:grey22, markersize=2.5, markerstrokecolor=:grey22)
+	scatter!(p_1_4_combo, 1:length(weighted_multiplet_data), map(x -> x[3], weighted_multiplet_data) .- Teffs; label="Texc (combinação p/ espetro)", markercolor=:blue1, markersize=2.5, markerstrokecolor=:blue1)
+	scatter!(p_1_4_combo, 1:length(weighted_multiplet_data), multiplet_data_1_4_combo .- Teffs_1_4_combo; label="Texc (combinação (1,4))", markercolor=:grey22, markersize=2.5, markerstrokecolor=:grey22, ylim=(-2000, 2000), legend=:topleft)
 	
-	plot!([minimum(Teffs_1_4_combo), maximum(Teffs_1_4_combo)], [minimum(Teffs_1_4_combo), maximum(Teffs_1_4_combo)]; label="Reference")
-	xlabel!("Teff / K")
-	ylabel!("Texc / K")
+	hline!(p_1_4_combo, [0]; label="")
+	#plot!([minimum(Teffs_1_4_combo), maximum(Teffs_1_4_combo)], [minimum(Teffs_1_4_combo), maximum(Teffs_1_4_combo)]; label="Reference")
+	ylabel!("Texc - Teff / K")
+	
+	savefig(p_1_4_combo, "Texc_combo_1_4_todos.pdf")
 	
 	p_1_4_combo
 end

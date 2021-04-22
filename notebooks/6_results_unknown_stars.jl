@@ -12,7 +12,7 @@ begin
 	using Plots
 	gr();
 	
-	using Measurements: value, Measurement, ±
+	using Measurements: value, uncertainty, Measurement, ±
 	
 	using FFTW, DSP
 	
@@ -65,7 +65,7 @@ begin
 		# Spectra are lower res, harder to find lines. can't use combo (1,4)
 		_, _, Texc = find_best_multiplet_combo_for_Texc_estimate(
 			weighted_median, 
-			[multiplet_list[2], multiplet_list[5]],
+			[multiplet_list[best_combo_i], multiplet_list[best_combo_j]],
 			lines,
 			ew_list,
 			2)
@@ -92,35 +92,38 @@ begin
 	end
 end
 
+# ╔═╡ 60b604c6-15e1-44f6-a369-2f31dea63dfa
+md"While it seemed best to use combo (1,4) before, we find that for these lower resolution spectra, some multiplets don't have enough lines well defined, so we do have to use the best combo for the Sun."
+
 # ╔═╡ db2ae75b-cd61-40ec-ba80-811851ad5b5f
 md"**estrela1.fits**
 
 Best multiplet combo: $(results[1][2][5], results[1][2][6])
 
-Texc: $(results[1][2][7])
+Texc: $(value(results[1][2][7])) ± $(uncertainty(results[1][2][7]))
 
-Teff: $(results[1][2][8])
+Teff: $(value(results[1][2][8])) ± $(uncertainty(results[1][2][8]))
 
-logg: $(results[1][2][9])
+logg: $(value(results[1][2][9])) ± $(uncertainty(results[1][2][9]))
 
-[Fe/H]: $(results[1][2][10])
+[Fe/H]: $(value(results[1][2][10])) ± $(uncertainty(results[1][2][10]))
 
-[α/Fe]: $(results[1][2][11])"
+[α/Fe]: $(value(results[1][2][11])) ± $(uncertainty(results[1][2][11]))"
 
 # ╔═╡ dce9b2d7-6164-43c3-a2ad-c8472e74bb6a
 md"**estrela2_vcor.fits**
 
 Best multiplet combo: $(results[2][2][5], results[2][2][6])
 
-Texc: $(results[2][2][7])
+Texc: $(value(results[2][2][7])) ± $(uncertainty(results[2][2][7]))
 
-Teff: $(results[2][2][8])
+Teff: $(value(results[2][2][8])) ± $(uncertainty(results[2][2][8]))
 
-logg: $(results[2][2][9])
+logg: $(value(results[2][2][9])) ± $(uncertainty(results[2][2][9]))
 
-[Fe/H]: $(results[2][2][10])
+[Fe/H]: $(value(results[2][2][10])) ± $(uncertainty(results[2][2][10]))
 
-[α/Fe]: $(results[2][2][11])"
+[α/Fe]: $(value(results[2][2][11])) ± $(uncertainty(results[2][2][11]))"
 
 # ╔═╡ 62872c0c-1b41-4908-9d80-5d8cc8e945b3
 function fft_line_log10(λ, flux, continuum, N)
@@ -162,8 +165,8 @@ function plot_fft_line(line, continuum, N, noise_level, xlim=(-Inf, +Inf); σ₁
 	
 	freq, ps = fft_line_log10(λ, flux, continuum, N)
 	
-	plot!(p, freq, ps; markersize=1, label="FFT (λ_c: $(value(λ_c)))", xlabel="Frequency / Hz", ylabel="log10(flux) / dex", xlim=xlim)
-	hline!(p, [noise_level]; label="Approx. noise level")
+	plot!(p, freq, ps; markersize=1, label="FFT (λ_c: $(value(λ_c)))", xlabel="Frequência / Hz", ylabel="log10(fluxo) / dex", xlim=xlim)
+	hline!(p, [noise_level]; label="Nível do ruído")
 
 	if !ismissing(σ₁lim)
 		I = σ₁lim[1] .<= freq .<= σ₁lim[2]
@@ -203,37 +206,45 @@ plot_fft_line(line_data(1, 10), 1.05, 1000, -3.05; σ₁lim=(30.05, 30.06))
 push!(σ₁_estrela1, (6858.165240478099, 30.058 ± 0.095))
 
 # ╔═╡ 41a35fa7-3665-4f79-9b92-42ac9da54805
-plot_fft_line(line_data(1, 17), 1.36, 1000, -2.71; σ₁lim=(15.95, 15.96))
+plot_fft_line(line_data(1, 18), 1.36, 1000, -2.71; σ₁lim=(15.94, 15.97))
 
 # ╔═╡ 8f6cf400-f5bf-40e8-b188-cd303eef367d
 push!(σ₁_estrela1, (6710.340049661337, 15.952 ± 0.093))
 
 # ╔═╡ 985b995b-0779-4b8b-96c7-8e8b8a540592
-plot_fft_line(line_data(1, 24), 1.40, 1000, -2.48; σ₁lim=(10.65, 10.66))
+plot_fft_line(line_data(1, 26), 1.40, 1000, -2.48; σ₁lim=(10.65, 10.66))
 
 # ╔═╡ ec25e71c-2637-496b-b1b9-c60c5a71dc40
 push!(σ₁_estrela1, (5927.810086326589, 10.655 ± 0.093))
 
 # ╔═╡ 467ed682-b96e-49a2-8ad7-20fdeac7a7ec
-plot_fft_line(line_data(1, 30), 1.36, 1000, -2.8; σ₁lim=(14.19, 14.195))
+plot_fft_line(line_data(1, 33), 1.36, 1000, -2.8; σ₁lim=(14.19, 14.195))
 
 # ╔═╡ e387bb75-9fbe-49d0-b3e1-edee94a9cb97
 push!(σ₁_estrela1, (5815.232975922436, 14.191 ± 0.096))
 
 # ╔═╡ a2bf80b9-b60d-4edd-87ec-b68a5acfb8df
-plot_fft_line(line_data(1, 48), 1.32, 1000, -2.6; σ₁lim=(17.298, 17.302))
+begin
+	# https://discourse.julialang.org/t/how-to-draw-a-rectangular-region-with-plots-jl/1719/8
+	rectangle(w, h, x, y) = Shape(x .+ [0,w,w,0], y .+ [0,0,h,h])
+	
+	p_vsini_estrela_1 = plot_fft_line(line_data(1, 54), 1.32, 1000, -2.6; σ₁lim=(17.298, 17.302))
+	plot!(p_vsini_estrela_1, rectangle(10,0.7,40,-2.95), opacity=.2; fillcolor=:grey, label="Zona do nível do ruído")
+	savefig(p_vsini_estrela_1, "plot_vsini_estrela_1.pdf")
+	p_vsini_estrela_1
+end
 
 # ╔═╡ 9430188d-1178-4411-9e9f-07e7100b28e3
 push!(σ₁_estrela1, (5987.080608350745, 17.3 ± 0.093))
 
 # ╔═╡ 4ee26d24-f917-4948-913d-88a0ba8f7c51
-plot_fft_line(line_data(1, 51), 1.315, 1000, -2.32; σ₁lim=(22.18, 22.19))
+plot_fft_line(line_data(1, 57), 1.315, 1000, -2.32; σ₁lim=(22.18, 22.19))
 
 # ╔═╡ 1e453913-5fbf-4d2c-a239-b6eb75ace2d5
 push!(σ₁_estrela1, (6024.0744990292305, 22.182 ± 0.092))
 
 # ╔═╡ 3474b583-58fc-4f96-b2bd-03e0ecb61008
-plot_fft_line(line_data(1, 61), 1.30, 1000, -2.51; σ₁lim=(6.717, 6.718))
+plot_fft_line(line_data(1, 67), 1.30, 1000, -2.51; σ₁lim=(6.717, 6.718))
 
 # ╔═╡ a35eb951-ef85-40d0-936d-ebb1f1321ee5
 push!(σ₁_estrela1, (6096.679536240571, 6.718 ± 0.095))
@@ -249,13 +260,13 @@ md"# vsini: estrela2_vcor.fits"
 
 # ╔═╡ 972bdda9-4371-4fe1-89b7-86f0bb5ed163
 begin
-	plot_line(line_data(2, 19))
-	hline!([5150])
+	#plot_line(line_data(2, 1))
+	#hline!([5150])
 	#push!(σ1_estrela1, (6024.0744990292305, 22.186 ± 0.002))
-	plot_fft_line(line_data(2, 19), 5150, 1000, 1.75)#.32, (22.185, 22.187)) # σ₁ ≈ 22.186
+	plot_fft_line(line_data(2, 7), 5150, 1000, 1.75)#.32, (22.185, 22.187)) # σ₁ ≈ 22.186
 end
 
-# fuck - no noise level?!
+# fuck - no noise level?! but we do know the first zero is around the first minimum, right?
 
 # ╔═╡ 2017e0a2-cd9b-4a1a-8106-52b032b022c4
 md"Unable to determine vsini for estrela2_vcor.fits"
@@ -327,9 +338,13 @@ md"### Normalizing observed spectrum to continuum level"
 
 # ╔═╡ e4776dd5-361b-49b7-8013-25e6445587d8
 begin
-	plot(λ_estrela1, flux_estrela1; markersize=1, label="Observed spectrum", legend=:bottom, xlim=(lower_bound_1, upper_bound_1))
+	p_estrela1_normalizacao = plot(λ_estrela1, flux_estrela1; markersize=1, label="Espetro real", legend=:bottomright, xlim=(lower_bound_1, upper_bound_1))
 	y0, y1 = 1.38, 1.385
-	plot!([lower_bound_1, upper_bound_1], [y0, y1]; label="Continuum level")
+	plot!(p_estrela1_normalizacao, [lower_bound_1, upper_bound_1], [y0, y1]; label="Nível do contínuo")
+	xlabel!(p_estrela1_normalizacao, "Comprimento de onda / Å")
+	ylabel!(p_estrela1_normalizacao, "Fluxo / W/m²")
+	savefig(p_estrela1_normalizacao, "estrela1_normalizacao.pdf")
+	p_estrela1_normalizacao
 end
 
 # ╔═╡ c2546bed-788e-4241-a4fa-bb5c82fff028
@@ -362,16 +377,18 @@ md"### Final result"
 
 # ╔═╡ 26ad8858-ec8b-4bdf-bad4-babf78ee3c46
 begin
-	plot(wave_estrela1_bestfit_sim, flux_estrela1_bestfit_sim; label="Best-fit synthetic spectrum", legend=:bottom)
-	plot!(λ_estrela1, flux_estrela1_normalized; label="Observed spectrum")
-	xlabel!("Wavelength / Å")
-	ylabel!("Flux / W/m²")
+	p_final_result_estrela_1 = plot(wave_estrela1_bestfit_sim, flux_estrela1_bestfit_sim; label="Melhor ajuste", legend=:bottomright)
+	plot!(p_final_result_estrela_1, λ_estrela1, flux_estrela1_normalized; label="Espetro real")
+	xlabel!(p_final_result_estrela_1, "Comprimento de onda / Å")
+	ylabel!(p_final_result_estrela_1, "Fluxo / W/m²")
+	savefig(p_final_result_estrela_1, "resultado_final_estrela_1.pdf")
+	p_final_result_estrela_1
 end
 
 # ╔═╡ ac1012b7-bc23-4ad4-ba39-e6c87db9494a
 md"The difference in signal intensity is at least partially due to normalization, it kinda fucks that up.
 
-TODO: recheck visualization of results. Why do some lines not fit?! Then repeat job for estrela 2."
+TODO: Why do some lines not fit?!"
 
 # ╔═╡ 6c1fd78d-5973-4f35-9999-a1608c885ddc
 md"## estrela2_vcor.fits"
@@ -418,9 +435,13 @@ md"### Normalizing observed spectrum to continuum level"
 
 # ╔═╡ 90201c5b-78c8-47c2-ad2c-f29926c4d1ba
 begin
-	plot(λ_estrela2, flux_estrela2; markersize=1, label="Observed spectrum", legend=:bottom, xlim=(lower_bound_2, upper_bound_2))
+	p_estrela2_normalizacao = plot(λ_estrela2, flux_estrela2; markersize=1, label="Espetro real", legend=:bottom, xlim=(lower_bound_2, upper_bound_2))
 	y0_2, y1_2 = 5000, 5350
-	plot!([lower_bound_2, upper_bound_2], [y0_2, y1_2]; label="Continuum level")
+	plot!(p_estrela2_normalizacao, [lower_bound_2, upper_bound_2], [y0_2, y1_2]; label="Nível do contínuo")
+	xlabel!(p_estrela2_normalizacao, "Comprimento de onda / Å")
+	ylabel!(p_estrela2_normalizacao, "Fluxo / W/m²")
+	savefig(p_estrela2_normalizacao, "estrela2_normalizacao.pdf")
+	p_estrela2_normalizacao
 end
 
 # ╔═╡ 21cd87b3-3dd1-4bbc-a1f8-b673b9d75bf5
@@ -450,10 +471,12 @@ end
 
 # ╔═╡ d3d5474e-2b73-49e6-a07f-1f49fe1c2205
 begin
-	plot(wave_estrela2_bestfit_sim, flux_estrela2_bestfit_sim; label="Best-fit synthetic spectrum", legend=:bottom)
-	plot!(λ_estrela2, flux_estrela2_normalized; label="Observed spectrum")
-	xlabel!("Wavelength / Å")
-	ylabel!("Flux / W/m²")
+	p_final_result_estrela_2 = plot(wave_estrela2_bestfit_sim, flux_estrela2_bestfit_sim; label="Melhor ajuste", legend=:bottomright)
+	plot!(p_final_result_estrela_2, λ_estrela2, flux_estrela2_normalized; label="Espetro real")
+	xlabel!(p_final_result_estrela_2, "Comprimento de onda / Å")
+	ylabel!(p_final_result_estrela_2, "Fluxo / W/m²")
+	savefig(p_final_result_estrela_2, "resultado_final_estrela_2.pdf")
+	p_final_result_estrela_2
 end
 
 # ╔═╡ Cell order:
@@ -464,8 +487,9 @@ end
 # ╠═7399902e-0f5d-4347-b4a1-188a96fcfed8
 # ╟─3aa0fdcf-2627-46a9-9d49-c86514f4ec27
 # ╠═ca6d2c9e-e0cb-4a40-9d7c-104ca912a98c
-# ╟─db2ae75b-cd61-40ec-ba80-811851ad5b5f
-# ╟─dce9b2d7-6164-43c3-a2ad-c8472e74bb6a
+# ╟─60b604c6-15e1-44f6-a369-2f31dea63dfa
+# ╠═db2ae75b-cd61-40ec-ba80-811851ad5b5f
+# ╠═dce9b2d7-6164-43c3-a2ad-c8472e74bb6a
 # ╠═62872c0c-1b41-4908-9d80-5d8cc8e945b3
 # ╠═4b8403f7-28b6-430a-9763-d7172f6f4839
 # ╠═e522a12b-c830-499b-9a78-c0ef69351506

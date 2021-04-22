@@ -9,7 +9,7 @@ function fit_curve_of_growth(xx, yy, curve_fit_σ_clip_threshold)
 
     while true
         try
-            fit = curve_fit(linear_model, xx, yy, p0)
+            fit = curve_fit(linear_model, value.(xx), value.(yy), p0)
         catch
             return nothing
         end
@@ -59,9 +59,9 @@ function calculate_curve_of_growth(multiplet, lines_used, ew_list)
     xx, yy = [], [] # TODO: make yy type stable
 
     for (λ_c_approx, line_data) in filter(kv -> kv[1] in keys(lines_used), multiplet)
-        λ_c_exact = value(lines_used[λ_c_approx][1])
+        λ_c_exact = lines_used[λ_c_approx][1]
         push!(xx, line_data.loggf + log10(λ_c_exact))
-        push!(yy, log10(value(ew_list[λ_c_approx])/λ_c_exact))
+        push!(yy, log10(ew_list[λ_c_approx]/λ_c_exact))
 
         # begin
         #     λ_c_exact = lines_used[λ_c_approx][1]
@@ -78,7 +78,7 @@ function group_lines_into_multiplets(line_list) # TODO: take multiplet EP ranges
     multiplets = []
     
     for bounds in MULTIPLETS
-        multiplet = filter(kv -> bounds[1] <= kv[2].χ <= bounds[2], line_list)
+        multiplet = filter(kv -> bounds[1] <= kv[2].χ <= bounds[2] && kv[2].El == :FeI, line_list)
         push!(multiplets, multiplet)
     end
 
@@ -139,19 +139,18 @@ function weighted_median(m1, b1, xx1, m2, b2, xx2)
         [m1*x + b1 for x in xx1], 
         [m2*x + b2 for x in xx2])
 
-    y_median = median(y_values) # median is least affected by outliers
+    y_median = mean(y_values) # median is least affected by outliers
     # so it's the best property to describe a weighted central tendency
 end
 
+# unweighted_median ?? weighted_median ?? bad names! not median!
+# FIXME: did i do the above right? changed median to mean.
 function unweighted_median(m1, b1, xx1, m2, b2, xx2)
     y_min_multiplet1, y_max_multiplet1 = (m1*xx1[begin] + b1, m1*xx1[end] + b1)
     y_min_multiplet2, y_max_multiplet2 = (m2*xx2[begin] + b2, m2*xx2[end] + b2)
 
     y_min = max(y_min_multiplet1, y_min_multiplet2)
     y_max = min(y_max_multiplet1, y_max_multiplet2)
-
-    # TODO: 1. weighted median is too affected by outliers.
-    # outliers should be removed (Texc is wild!)
 
     y_median = (y_min + y_max)/2
 end

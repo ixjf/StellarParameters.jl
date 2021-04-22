@@ -234,6 +234,39 @@ include("grid_compare.jl")
 # 	end
 # end
 
+# begin
+# 	results = []
+	
+# 	grid_cache = GridCache()
+	
+# 	for filename in filter(x -> endswith(x, "fits"), readdir(sisma_archive_path))
+# 		λ, flux, opt_data = read_spectrum_sisma(joinpath(sisma_archive_path, filename))
+		 
+# 		lines, ew_list = isolate_all_lines_found_in_spectrum(
+# 			opt_data["VRAD"],
+# 			keys(full_line_list),
+# 			(λ, flux),
+# 			5, # already determined in 2_lines.jl
+# 			5, # already determined in 2_lines.jl
+# 			12.5) # already determined in 2_lines.jl
+		
+# 		_, _, Texc = find_best_multiplet_combo_for_Texc_estimate(
+# 			weighted_median, 
+# 			[multiplet_list[1], multiplet_list[4]],
+# 			lines,
+# 			ew_list,
+# 			2)
+		
+# 		params = match_ew_against_grid(ew_list, Texc, grid_cache)
+		
+# 		isnothing(params) && continue
+
+# 		Teff, logg, FeH, α_Fe = params
+
+# 		push!(results, filename => (λ, flux, opt_data, Teff, logg, FeH, α_Fe))
+# 	end
+# end
+
 # f = FITS("../data/estrelas_a_analisar/estrela2_vcor.fits")
 # hdu = f[1]
 
