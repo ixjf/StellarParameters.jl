@@ -53,7 +53,7 @@ begin
 			(λ, flux),
 			5, # already determined in 2_lines.jl
 			5, # already determined in 2_lines.jl
-			12.5) # already determined in 2_lines.jl
+			20) # already determined in 2_lines.jl
 
 		best_combo_i, best_combo_j, _ = find_best_multiplet_combo_for_Texc_estimate(
 			weighted_median, 
@@ -165,7 +165,7 @@ function plot_fft_line(line, continuum, N, noise_level, xlim=(-Inf, +Inf); σ₁
 	
 	freq, ps = fft_line_log10(λ, flux, continuum, N)
 	
-	plot!(p, freq, ps; markersize=1, label="FFT (λ_c: $(value(λ_c)))", xlabel="Frequência / Hz", ylabel="log10(fluxo) / dex", xlim=xlim)
+	plot!(p, freq, ps; markersize=1, label="FFT (λ_c: $(value(λ_c)))", xlabel="Frequência / Hz", ylabel="log10(amplitude) / dex", xlim=xlim)
 	hline!(p, [noise_level]; label="Nível do ruído")
 
 	if !ismissing(σ₁lim)

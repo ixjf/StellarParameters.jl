@@ -8,6 +8,7 @@ using Folds
 
 # NOTE: move spectra data to a class?
 
+# not multi threaded, unnecessary right now (for it to be thread-safe)
 GridCache = ThreadSafeDict{String, Array{Float64, 1}}
 
 function calculate_min_squared_error_ew(ew_list_obs, ew_list_grid)

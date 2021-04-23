@@ -43,7 +43,7 @@ begin
 			(λ, flux),
 			5, # already determined in 2_lines.jl
 			5, # already determined in 2_lines.jl
-			12.5) # already determined in 2_lines.jl
+			20) # already determined in 2_lines.jl
 		
 		_, _, Texc = find_best_multiplet_combo_for_Texc_estimate(
 			weighted_median, 
@@ -90,6 +90,7 @@ begin
 		global max_FeH = max(FeH_ref, max_FeH)
 	end
 	
+	xlabel!(p_Teff, "Nº do espetro")
 	ylabel!(p_Teff, "Teff obtido - ref / K")
 	yticks!(p_Teff, -2500:250:1000)
 	hline!(p_Teff, [0]; label="Intervalo incerteza máximo", ribbon=400) # SISMA uncertainty (highest)
@@ -97,6 +98,7 @@ begin
 	#plot!(p_Teff, [min_Teff, max_Teff], [min_Teff, max_Teff]; label="Reference", legend=nothing, ribbon=400) # SISMA uncertainty (highest)
 	#plot!(p_Teff, [min_Teff, max_Teff], [min_Teff, max_Teff]; label="Reference", legend=nothing, ribbon=240) # SISMA uncertainty
 
+	xlabel!(p_logg, "Nº do espetro")
 	ylabel!(p_logg, "logg obtido - ref / dex")
 	yticks!(p_logg, -2.5:0.5:3)
 	hline!(p_logg, [0]; label="Intervalo incerteza máximo", ribbon=0.50) # SISMA uncertainty (highest)
@@ -104,6 +106,7 @@ begin
 	#plot!(p_logg, [min_logg, max_logg], [min_logg, max_logg]; label="Reference", legend=nothing, ribbon=0.50) # SISMA uncertainty (highest)
 	#plot!(p_logg, [min_logg, max_logg], [min_logg, max_logg]; label="Reference", legend=nothing, ribbon=0.32) # SISMA uncertainty
 	
+	xlabel!(p_FeH, "Nº do espetro")
 	ylabel!(p_FeH, "[Fe/H] obtido - ref / dex")
 	yticks!(p_FeH, -1.5:0.25:1.75)
 	hline!(p_FeH, [0]; label="Intervalo incerteza máximo", ribbon=0.40) # SISMA uncertainty (highest)

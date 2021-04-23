@@ -41,7 +41,7 @@ begin
 			(λ, flux),
 			5, # already determined in 2_lines.jl
 			5, # already determined in 2_lines.jl
-			12.5) # already determined in 2_lines.jl
+			20) # already determined in 2_lines.jl
 		
 		push!(d, filename => (λ, flux, opt_data, lines, ew_list))
 	end
@@ -96,12 +96,13 @@ end
 begin
 	p = scatter([], []; label="")
 	
-	scatter!(1:length(unweighted_multiplet_data), map(x -> x[3], unweighted_multiplet_data) .- Teffs; label="Método 1", markercolor=:grey22, markersize=2.5, markerstrokecolor=:grey22, ylim=(-4500, 4500))
-	scatter!(1:length(weighted_multiplet_data), map(x -> x[3], weighted_multiplet_data) .- Teffs; label="Método 2", markercolor=:blue1, markersize=2.5, markerstrokecolor=:blue1, ylim=(-4500, 4500))
+	scatter!(1:length(unweighted_multiplet_data), map(x -> x[3], unweighted_multiplet_data) .- Teffs; label="Método 1", markercolor=:grey22, markersize=3.5, markerstrokecolor=:grey22, ylim=(-4500, 4500))
+	scatter!(1:length(weighted_multiplet_data), map(x -> x[3], weighted_multiplet_data) .- Teffs; label="Método 2", markercolor=:blue1, markersize=3.5, markerstrokecolor=:blue1, ylim=(-4500, 4500))
 	
 	hline!(p, [0]; label="")
 	#plot!([1, length(weighted_multiplet_data)], [minimum(Teffs), maximum(Teffs)]; label="Linha de referência", legend=:bottomright)
-	ylabel!("Texc - Teff ref / K")
+	ylabel!(p, "Texc - Teff ref / K")
+	xlabel!(p, "Nº do espetro")
 	
 	savefig(p, "Texc_Teff_multipletos.pdf")
 	
@@ -120,7 +121,6 @@ begin
 	for (i,j,_) in weighted_multiplet_data
 		histo[(i,j)] += 1
 	end
-	#MULTIPLETS, ["($(x[1]), $(x[2]))" for x in (collect(keys(histo)))], reshape(collect(values(histo)), 1, length(histo)), repeat([""], inner=length(histo)) 
 	p_multiplet_histo = groupedbar(["($(x[1]), $(x[2]))" for x in (collect(keys(histo)))], Int64.(reshape(collect(values(histo)), 1, length(histo))), group = repeat([""], inner=length(histo)), ylabel="Nº vezes escolhido", xlabel="Combinação de multipletos")
 	
 	savefig(p_multiplet_histo, "multiplet_combo_histo.pdf")
@@ -156,12 +156,12 @@ end
 begin
 	p_1_4_combo = scatter([], []; label="")
 	
-	scatter!(p_1_4_combo, 1:length(weighted_multiplet_data), map(x -> x[3], weighted_multiplet_data) .- Teffs; label="Texc (combinação p/ espetro)", markercolor=:blue1, markersize=2.5, markerstrokecolor=:blue1)
-	scatter!(p_1_4_combo, 1:length(weighted_multiplet_data), multiplet_data_1_4_combo .- Teffs_1_4_combo; label="Texc (combinação (1,4))", markercolor=:grey22, markersize=2.5, markerstrokecolor=:grey22, ylim=(-2000, 2000), legend=:topleft)
+	scatter!(p_1_4_combo, 1:length(weighted_multiplet_data), map(x -> x[3], weighted_multiplet_data) .- Teffs; label="Texc (combinação p/ espetro)", markercolor=:blue1, markersize=3.5, markerstrokecolor=:blue1)
+	scatter!(p_1_4_combo, 1:length(weighted_multiplet_data), multiplet_data_1_4_combo .- Teffs_1_4_combo; label="Texc (combinação (1,4))", markercolor=:grey22, markersize=3.5, markerstrokecolor=:grey22, ylim=(-2000, 2000), legend=:topleft)
 	
 	hline!(p_1_4_combo, [0]; label="")
-	#plot!([minimum(Teffs_1_4_combo), maximum(Teffs_1_4_combo)], [minimum(Teffs_1_4_combo), maximum(Teffs_1_4_combo)]; label="Reference")
-	ylabel!("Texc - Teff / K")
+	ylabel!(p_1_4_combo, "Texc - Teff / K")
+	xlabel!(p_1_4_combo, "Nº do espetro")
 	
 	savefig(p_1_4_combo, "Texc_combo_1_4_todos.pdf")
 	
