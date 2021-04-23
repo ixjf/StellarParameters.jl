@@ -1,0 +1,40 @@
+- notebooks/
+    Notebooks de Pluto.jl (equivalente de Jupyter notebooks mas para a linguagem Julia)
+
+    1_line_list.jl: organização das riscas em multipletos pela EP
+
+    2_lines.jl: análise dos parâmetros ótimos para o filtro média móvel, incerteza nas
+    larguras equivalentes
+
+    3_multiplets.jl: análise dos resultados da estimativa da temp de excitação e melhor combinação
+    de multipletos a utilizar
+
+    5_results_sisma.jl: testes com os espetros SISMA (parâmetros finais obtidos)
+
+    6_results_unknown_stars.jl: análise das duas estrelas dadas
+
+- src/
+    config.jl: parâmetros de configuração do código (alguns são passados diretamente às funções agora,
+    i.e. são variáveis que não estão a ser utilizadas)
+
+    excitation_temp.jl: determinação da temp de excitação, curvas de crescimento, etc.
+
+    grid_compare.jl: comparação do espetro real com os espetros sintéticos, cálculo da dif.
+    mín. quadrada
+
+    line_list.jl: leitura do ficheiro com as riscas de tsantaki
+
+    lines.jl: código para isolar as riscas no espetro, determinação dos limites laterais,
+    ajuste gaussiano, cálculo da EW
+
+    math_functions.jl: convolução, definição de função linear e função gaussiana
+
+    profiles.jl: cálculo do perfil instrumental, de rotação, e código para convolução do espetro
+    com os perfis
+
+    spectra.jl: funções de leitura dos diferentes tipos de ficheiro FITS
+
+    StellarParameters.jl: ficheiro principal, apenas inclui todos os outros ficheiros pela
+    ordem correta
+
+    thread_safe_dict.jl: dicionário thread-safe

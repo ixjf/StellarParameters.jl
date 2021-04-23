@@ -278,3 +278,8 @@ include("grid_compare.jl")
 # know which λ_c the function will use, and it's not obvious that lines
 # must have λ_c_exact = λ_c_approx for the Sun but that the λ and flux are not required
 # in the tuple!
+
+# THE SOLUTION IS SO SIMPLE AND OBVIOUS! JUST CORRECT THE ENTIRE WAVELENGTHS
+# FOR VRAD WHEN LOADING THE SPECTRUM. THEN NONE OF THE REMAINING CODE
+# EVER NEEDS TO WORRY ABOUT VRAD AND THEY CAN SIMPLY USE THE WAVELENGTHS
+# FOR LAMBDA_C THAT ARE IN THE TSANTAKI LINE LIST!
