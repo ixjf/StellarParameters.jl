@@ -9,7 +9,7 @@ function instrumental_profile((λ, flux), R)
 
     kernel_λ_space = -4*FWHM:Δx:4*FWHM
     kernel = gaussian_model(kernel_λ_space, (0.0, σ, 1.0, 0.0))
-    kernel ./= sum(kernel) # normalize to [0,1]
+    kernel ./= sum(kernel) # normalize
     
     kernel
 end
@@ -25,7 +25,7 @@ function rotational_profile(Δx, ϵ, λ_c, vsini) # vsini in km/s, Δx for spect
     term = max.((@. 1 - (kernel_λ_space/Δλₘ)^2), 0.0)
 
     kernel = @. (2*(1 - ϵ)*term^(1/2) + (π*ϵ/2)*term)/(π*Δλₘ*(1 - ϵ/3))
-    kernel ./= sum(kernel) # normalize to [0,1]
+    kernel ./= sum(kernel) # normalize
 
     kernel
 end
